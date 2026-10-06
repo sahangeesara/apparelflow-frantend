@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { HOME, type User } from '@/lib/types';
-import { showError, showSuccess } from '@/lib/alerts';
+import { showError } from '@/lib/alerts';
 import Field from './Field';
 
 const DEMO = [['Cutting Supervisor', 'supervisor@apparelflow.test', 'Supervisor@123'], ['Cutting Verifier', 'verifier@apparelflow.test', 'Verifier@123'], ['Sewing Supervisor', 'sewing@apparelflow.test', 'Sewing@123']];
@@ -15,8 +15,7 @@ export default function LoginForm({ onSignup }: { onSignup: () => void }) {
     setError('');
     try {
       const { user } = await api<{ user: User }>('/login', 'POST', { email: e, password: p });
-      await showSuccess(`Login successful. Welcome, ${user.full_name}.`);
-      router.push(HOME[user.role]);
+      router.replace(HOME[user.role]);
       router.refresh();
     } catch (err) {
       const message = (err as Error).message;

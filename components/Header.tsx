@@ -1,12 +1,16 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api } from '@/lib/api';
-import { showError, showSuccess } from '@/lib/alerts';
+import { showConfirm, showError, showSuccess } from '@/lib/alerts';
 import type { User } from '@/lib/types';
 
 export default function Header({ user }: { user: User | null }) {
   const router = useRouter();
   async function logout() {
+    const confirmation = await showConfirm('Are you sure you want to log out?');
+    if (!confirmation.isConfirmed) return;
+
     try {
       await api('/logout', 'POST');
       await showSuccess('You have been logged out.');
@@ -22,6 +26,7 @@ export default function Header({ user }: { user: User | null }) {
       {user && (
         <div className="text-sm">{user.full_name} · <b>{user.role}</b>
           <button onClick={logout} className="ml-3 rounded bg-white px-3 py-1 font-semibold text-blue-900">Log out</button>
+          {user.role === 'cutting_supervisor' && <Link href="/admin" className="ml-2 rounded border border-white px-3 py-1 font-semibold">Admin</Link>}
         </div>
       )}
     </header>

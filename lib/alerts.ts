@@ -28,3 +28,17 @@ export function showInfo(message: string) {
     confirmButtonColor: '#1e3a8a',
   });
 }
+
+export function showConfirm(message: string) {
+  return Swal.fire({
+    icon: 'question',
+    title: 'Confirm logout',
+    text: message,
+    showCancelButton: true,
+    confirmButtonText: 'Yes, log out',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#1e3a8a',
+    cancelButtonColor: '#64748b',
+    reverseButtons: true,
+  });
+}
