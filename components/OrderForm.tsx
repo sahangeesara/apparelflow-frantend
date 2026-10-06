@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { showError, showSuccess } from '@/lib/alerts';
 import type { Recipe } from '@/lib/types';
 import Field from './Field';
 
@@ -25,8 +26,14 @@ export default function OrderForm({ recipes }: { recipes: Recipe[] }) {
     setBusy(true);
     try {
       await api('/orders', 'POST', { recipe_id: recipeId, target_qty: +qty, fabric_roll_id: roll.trim(), actual_fabric_yds: +yds });
-      setQty(''); setRoll(''); setYds(''); setMsg('Order submitted for verification'); router.refresh();
-    } catch (err) { const a = err as ApiError; a.fields ? setErrs(a.fields) : setMsg(a.message); }
+      setQty(''); setRoll(''); setYds(''); setMsg('Order submitted for verification');
+      await showSuccess('Order submitted for verification.');
+      router.refresh();
+    } catch (err) {
+      const a = err as ApiError;
+      if (a.fields) setErrs(a.fields);
+      else { setMsg(a.message); await showError(a.message); }
+    }
     setBusy(false);
   }
   return (

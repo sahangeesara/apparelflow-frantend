@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { showError, showSuccess } from '@/lib/alerts';
 import type { Flag, Order } from '@/lib/types';
 import StatusChip from './StatusChip';
 
@@ -26,13 +27,30 @@ export default function VerifierTerminal({ order }: { order: Order }) {
     try {
       await api(`/orders/${order.id}/counts`, 'POST', { counts: Object.fromEntries(rows.filter(r => r.valid).map(r => [r.c.component_id, +r.v])) });
       await api(`/orders/${order.id}/approve`, 'POST');
+      await showSuccess('Batch approved successfully.');
       router.push('/verifier'); router.refresh();
-    } catch (e) { setMsg((e as ApiError).message + ((e as ApiError).status === 422 ? ' (server hard stop)' : '')); }
+    } catch (e) {
+      const message = (e as ApiError).message + ((e as ApiError).status === 422 ? ' (server hard stop)' : '');
+      setMsg(message);
+      await showError(message);
+    }
   }
   async function reject() {
-    if (note.trim().length < 5) { setNoteErr('A reason of at least 5 characters is mandatory'); return; }
-    try { await api(`/orders/${order.id}/reject`, 'POST', { note }); router.push('/verifier'); router.refresh(); }
-    catch (e) { setMsg((e as Error).message); }
+    if (note.trim().length < 5) {
+      const message = 'A reason of at least 5 characters is mandatory';
+      setNoteErr(message);
+      await showError(message);
+      return;
+    }
+    try {
+      await api(`/orders/${order.id}/reject`, 'POST', { note });
+      await showSuccess('Batch rejected and returned to the supervisor.');
+      router.push('/verifier'); router.refresh();
+    } catch (e) {
+      const message = (e as Error).message;
+      setMsg(message);
+      await showError(message);
+    }
   }
   return (
     <section className="card">

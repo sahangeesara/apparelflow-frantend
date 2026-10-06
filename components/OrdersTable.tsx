@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { showError, showSuccess } from '@/lib/alerts';
 import type { Order } from '@/lib/types';
 import StatusChip from './StatusChip';
 
@@ -9,7 +10,15 @@ export default function OrdersTable({ orders }: { orders: Order[] }) {
   const router = useRouter();
   const [msg, setMsg] = useState('');
   async function resubmit(id: number) {
-    try { await api(`/orders/${id}/resubmit`, 'POST'); router.refresh(); } catch (e) { setMsg((e as Error).message); }
+    try {
+      await api(`/orders/${id}/resubmit`, 'POST');
+      await showSuccess('Order resubmitted for verification.');
+      router.refresh();
+    } catch (e) {
+      const message = (e as Error).message;
+      setMsg(message);
+      await showError(message);
+    }
   }
   return (
     <section className="card">

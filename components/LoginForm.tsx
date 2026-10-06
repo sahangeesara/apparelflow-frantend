@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { HOME, type User } from '@/lib/types';
+import { showError, showSuccess } from '@/lib/alerts';
 import Field from './Field';
 
 const DEMO = [['Cutting Supervisor', 'supervisor@apparelflow.test', 'Supervisor@123'], ['Cutting Verifier', 'verifier@apparelflow.test', 'Verifier@123'], ['Sewing Supervisor', 'sewing@apparelflow.test', 'Sewing@123']];
@@ -11,8 +12,17 @@ export default function LoginForm({ onSignup }: { onSignup: () => void }) {
   const router = useRouter();
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [error, setError] = useState('');
   async function signIn(e: string, p: string) {
-    try { const { user } = await api<{ user: User }>('/login', 'POST', { email: e, password: p }); router.push(HOME[user.role]); router.refresh(); }
-    catch (err) { setError((err as Error).message); }
+    setError('');
+    try {
+      const { user } = await api<{ user: User }>('/login', 'POST', { email: e, password: p });
+      await showSuccess(`Login successful. Welcome, ${user.full_name}.`);
+      router.push(HOME[user.role]);
+      router.refresh();
+    } catch (err) {
+      const message = (err as Error).message;
+      setError(message);
+      await showError(message);
+    }
   }
   const submit = (e: FormEvent) => { e.preventDefault(); signIn(email.trim(), password); };
   return (

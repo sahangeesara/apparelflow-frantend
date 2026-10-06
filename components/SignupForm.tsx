@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { HOME, type Role, type User } from '@/lib/types';
+import { showError } from '@/lib/alerts';
 import Field from './Field';
 
 const ROLES: { value: Role; label: string }[] = [
@@ -28,10 +29,12 @@ export default function SignupForm({ onLogin }: { onLogin: () => void }) {
     try {
       await api('/signup', 'POST', { email: email.trim(), password, full_name: fullName.trim(), role });
       const { user } = await api<{ user: User }>('/login', 'POST', { email: email.trim(), password });
-      router.push(HOME[user.role]);
+      router.replace(HOME[user.role]);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to create account');
+      const message = err instanceof Error ? err.message : 'Unable to create account';
+      setError(message);
+      await showError(message);
     } finally {
       setSubmitting(false);
     }

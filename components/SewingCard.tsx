@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, fmtDate } from '@/lib/api';
+import { showError, showSuccess } from '@/lib/alerts';
 import type { Order } from '@/lib/types';
 import StatusChip from './StatusChip';
 
@@ -9,7 +10,17 @@ export default function SewingCard({ order: o }: { order: Order }) {
   const router = useRouter();
   const [msg, setMsg] = useState('');
   const l = o.last_log;
-  async function start() { try { await api(`/sewing/${o.id}/start`, 'POST'); router.refresh(); } catch (e) { setMsg((e as Error).message); } }
+  async function start() {
+    try {
+      await api(`/sewing/${o.id}/start`, 'POST');
+      await showSuccess('Sewing assembly started.');
+      router.refresh();
+    } catch (e) {
+      const message = (e as Error).message;
+      setMsg(message);
+      await showError(message);
+    }
+  }
   return (
     <article className="card">
       <h3 className="mb-1 flex flex-wrap items-center gap-2 text-xl font-bold">{o.order_no} · {o.recipe_name} × {o.target_qty} <StatusChip status="VERIFIED" /></h3>

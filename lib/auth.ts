@@ -7,7 +7,8 @@ const BACKEND = process.env.BACKEND_URL || 'http://localhost:4000';
 /** Server-side fetch to the Express API, forwarding the browser's session cookie. */
 export async function sfetch<T>(path: string): Promise<T | null> {
   try {
-    const r = await fetch(BACKEND + '/api' + path, { headers: { cookie: cookies().toString() }, cache: 'no-store' });
+    const requestCookies = await cookies();
+    const r = await fetch(BACKEND + '/api' + path, { headers: { cookie: requestCookies.toString() }, cache: 'no-store' });
     return r.ok ? ((await r.json()) as T) : null;
   } catch (error) {
     const cause = error instanceof TypeError ? (error as TypeError & { cause?: { code?: string } }).cause : undefined;
