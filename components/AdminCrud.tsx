@@ -82,14 +82,14 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
         setOrderDraft({ recipeId: String(recipes.recipes[0]?.id ?? ''), qty: '', roll: '', yds: '' });
         setOrders((await api<{ orders: Order[] }>('/orders')).orders);
       }
-      if (table !== 'profiles' && initialTables.some(item => item.name === 'profiles' && item.available)) {
-        const profiles = await api<TableData>('/admin/profiles');
-        setUserLabels(Object.fromEntries(
-          profiles.rows
-            .filter(row => typeof row.id === 'string' && typeof row.full_name === 'string')
-            .map(row => [row.id as string, row.full_name as string]),
-        ));
-      }
+      // if (table !== 'profiles' && initialTables.some(item => item.name === 'profiles' && item.available)) {
+      //   const profiles = await api<TableData>('/admin/profiles');
+      //   setUserLabels(Object.fromEntries(
+      //     profiles.rows
+      //       .filter(row => typeof row.id === 'string' && typeof row.full_name === 'string')
+      //       .map(row => [row.id as string, row.full_name as string]),
+      //   ));
+      // }
     } catch (err) {
       setError((err as Error).message);
     }
