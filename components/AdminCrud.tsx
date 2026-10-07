@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { showJson } from '@/lib/alerts';
 import type { AdminColumn, AdminTable, Order, Recipe } from '@/lib/types';
 import StatusChip from './StatusChip';
 
@@ -181,6 +182,17 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
   }
 
   function renderCell(column: AdminColumn, row: Record<string, unknown>) {
+    if (column.name === 'variances' && row[column.name] !== null && row[column.name] !== undefined && row[column.name] !== '') {
+      let value: unknown = row[column.name];
+      if (typeof value === 'string') {
+        try {
+          value = JSON.parse(value);
+        } catch {
+          value = row[column.name];
+        }
+      }
+      return <button type="button" className="btn btn-ghost" onClick={() => void showJson('Verification variances', value)}>View variances</button>;
+    }
     if (isImageColumn(column) && typeof row[column.name] === 'string' && row[column.name]) {
       return <Image src={String(row[column.name])} alt="Component image" width={48} height={48} unoptimized className="h-12 w-12 rounded border border-slate-300 object-cover" />;
     }

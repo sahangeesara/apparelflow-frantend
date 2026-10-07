@@ -29,6 +29,17 @@ export function showInfo(message: string) {
   });
 }
 
+export function showJson(title: string, value: unknown) {
+  const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  return Swal.fire({
+    icon: 'info',
+    title,
+    text,
+    confirmButtonColor: '#1e3a8a',
+    width: 640,
+  });
+}
+
 export function showConfirm(message: string) {
   return Swal.fire({
     icon: 'question',
