@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import type { AdminColumn, AdminTable } from '@/lib/types';
+import type { AdminColumn, AdminTable, Recipe } from '@/lib/types';
 
 type TableData = { name: string; columns: AdminColumn[]; rows: Record<string, unknown>[] };
 
@@ -12,6 +12,7 @@ const normalizedType = (column: AdminColumn) => column.type.trim().toLowerCase()
 const isDateColumn = (column: AdminColumn) => normalizedType(column) === 'date';
 const isTimestampColumn = (column: AdminColumn) => normalizedType(column).includes('timestamp') || normalizedType(column) === 'timestamptz';
 const isUserReference = (column: AdminColumn) => /(^|_)(created_by|updated_by|sewing_started_by|verifier_id|user_id)$/.test(column.name);
+const isGeneratedColumn = (column: AdminColumn) => isUserReference(column) || ['order_no', 'created_at', 'updated_at'].includes(column.name);
 const inputType = (column: AdminColumn) => isDateColumn(column) ? 'date' : isTimestampColumn(column) ? 'datetime-local' : 'text';
 
 function pickerValue(column: AdminColumn, value: unknown) {
@@ -36,6 +37,8 @@ function databaseValue(column: AdminColumn, value: string) {
 export default function AdminCrud({ initialTables }: { initialTables: AdminTable[] }) {
   const [selected, setSelected] = useState(initialTables.find(table => table.available)?.name ?? '');
   const [data, setData] = useState<TableData | null>(null);
+  const [orderRecipes, setOrderRecipes] = useState<Recipe[]>([]);
+  const [orderDraft, setOrderDraft] = useState({ recipeId: '', qty: '', roll: '', yds: '' });
   const [userLabels, setUserLabels] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
@@ -51,6 +54,11 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
       setEditing(null);
       setDraft({});
       setData(await api<TableData>(`/admin/${table}`));
+      if (table === 'cutting_orders') {
+        const recipes = await api<{ recipes: Recipe[] }>('/recipes');
+        setOrderRecipes(recipes.recipes);
+        setOrderDraft({ recipeId: String(recipes.recipes[0]?.id ?? ''), qty: '', roll: '', yds: '' });
+      }
       if (table !== 'profiles' && initialTables.some(item => item.name === 'profiles' && item.available)) {
         const profiles = await api<TableData>('/admin/profiles');
         setUserLabels(Object.fromEntries(
@@ -65,8 +73,8 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
   }
 
   const primary = data?.columns.filter(column => column.pk > 0) ?? [];
-  const editable = data?.columns.filter(column => !column.pk && !column.dflt_value && !isUserReference(column)) ?? [];
-  const createFields = data?.columns.filter(column => !column.dflt_value && !isUserReference(column)) ?? [];
+  const editable = data?.columns.filter(column => !column.pk && !column.dflt_value && !isGeneratedColumn(column)) ?? [];
+  const createFields = data?.columns.filter(column => !column.dflt_value && !isGeneratedColumn(column)) ?? [];
   const keyFor = (row: Record<string, unknown>) => encodeURIComponent(
     JSON.stringify(Object.fromEntries(primary.map(column => [column.name, row[column.name]]))),
   );
@@ -112,9 +120,30 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
   async function create() {
     if (!data) return;
     try {
+      if (data.name === 'cutting_orders') {
+        const fields: Record<string, string> = {};
+        if (!/^[1-9]\d*$/.test(orderDraft.qty.trim())) fields.target_qty = 'Whole number greater than 0 only';
+        if (!/^\d+(\.\d+)?$/.test(orderDraft.yds.trim()) || +orderDraft.yds <= 0) fields.actual_fabric_yds = 'Enter a positive number';
+        if (!/^[A-Za-z0-9-]{3,40}$/.test(orderDraft.roll.trim())) fields.fabric_roll_id = 'Use letters, digits and dashes only';
+        if (!orderDraft.recipeId) fields.recipe_id = 'Select a recipe';
+        if (Object.keys(fields).length) {
+          setError(Object.values(fields).join(' · '));
+          return;
+        }
+        await api('/admin/cutting_orders', 'POST', {
+          recipe_id: +orderDraft.recipeId,
+          target_qty: +orderDraft.qty,
+          fabric_roll_id: orderDraft.roll.trim(),
+          actual_fabric_yds: +orderDraft.yds,
+        });
+        setOrderDraft({ ...orderDraft, qty: '', roll: '', yds: '' });
+        await load(data.name);
+        setNotice('Cutting order created.');
+        return;
+      }
       const payload = Object.fromEntries(
         data.columns
-          .filter(column => Object.hasOwn(draft, column.name))
+          .filter(column => Object.hasOwn(draft, column.name) && !isGeneratedColumn(column))
           .map(column => [column.name, createValue(column, draft[column.name])]),
       );
       await api(`/admin/${data.name}`, 'POST', payload);
@@ -142,7 +171,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
     try {
       const payload = Object.fromEntries(
         data.columns
-          .filter(column => Object.hasOwn(editing, column.name))
+          .filter(column => Object.hasOwn(editing, column.name) && !isGeneratedColumn(column))
           .map(column => [column.name, createValue(column, fieldValue(column, editing[column.name]))]),
       );
       await api(`/admin/${data.name}/${keyFor(editing)}`, 'PATCH', payload);
@@ -195,6 +224,34 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
               </div>
               <button type="button" className="btn btn-ghost" onClick={() => void load(data.name)}>Refresh</button>
             </div>
+            {data.name === 'cutting_orders' ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm font-semibold text-slate-700">
+                  Recipe
+                  <select
+                    className="field mt-1"
+                    value={orderDraft.recipeId}
+                    onChange={event => setOrderDraft({ ...orderDraft, recipeId: event.target.value })}
+                  >
+                    {orderRecipes.map(recipe => (
+                      <option key={recipe.id} value={recipe.id}>{recipe.recipe_code} – {recipe.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Target batch quantity
+                  <input className="field mt-1" inputMode="numeric" placeholder="e.g. 50" value={orderDraft.qty} onChange={event => setOrderDraft({ ...orderDraft, qty: event.target.value })} />
+                </label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Fabric roll ID
+                  <input className="field mt-1" placeholder="FAB-ROLL-882" value={orderDraft.roll} onChange={event => setOrderDraft({ ...orderDraft, roll: event.target.value })} />
+                </label>
+                <label className="text-sm font-semibold text-slate-700">
+                  Actual fabric used (yards)
+                  <input className="field mt-1" inputMode="decimal" placeholder="e.g. 92.5" value={orderDraft.yds} onChange={event => setOrderDraft({ ...orderDraft, yds: event.target.value })} />
+                </label>
+              </div>
+            ) : (
             <div className="grid gap-3 md:grid-cols-3">
               {createFields.map(column => (
                 <label className="text-sm font-semibold text-slate-700" key={column.name}>
@@ -203,6 +260,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
                 </label>
               ))}
             </div>
+            )}
             <button type="button" className="btn mt-4" onClick={() => void create()}>Add {title(data.name).replace(/s$/, '')}</button>
           </div>
 

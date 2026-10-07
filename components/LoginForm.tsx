@@ -6,8 +6,6 @@ import { HOME, type User } from '@/lib/types';
 import { showError } from '@/lib/alerts';
 import Field from './Field';
 
-const DEMO = [['Cutting Supervisor', 'supervisor@apparelflow.test', 'Supervisor@123'], ['Cutting Verifier', 'verifier@apparelflow.test', 'Verifier@123'], ['Sewing Supervisor', 'sewing@apparelflow.test', 'Sewing@123']];
-
 export default function LoginForm({ onSignup }: { onSignup: () => void }) {
   const router = useRouter();
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [error, setError] = useState('');
