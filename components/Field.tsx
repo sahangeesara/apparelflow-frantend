@@ -1,9 +1,25 @@
-export default function Field({ label, id, error, children }: { label: string; id: string; error?: string; children: React.ReactNode }) {
+export default function Field({
+  label,
+  id,
+  error,
+  children,
+}: {
+  label: string;
+  id: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <label htmlFor={id} className="mb-1 block font-semibold">{label}</label>
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+        {label}
+      </label>
       {children}
-      <span role="alert" className="block min-h-[1.25rem] text-sm font-semibold text-red-700">{error}</span>
+      {error && (
+        <span role="alert" className="block text-xs font-semibold text-rose-600">
+          {error}
+        </span>
+      )}
     </div>
   );
 }
