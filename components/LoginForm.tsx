@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { HOME, type User } from '@/lib/types';
-import { showError } from '@/lib/alerts';
+import { showError, showSuccess } from '@/lib/alerts';
 import Field from './Field';
 
 export default function LoginForm({ onSignup }: { onSignup: () => void }) {
@@ -13,6 +13,7 @@ export default function LoginForm({ onSignup }: { onSignup: () => void }) {
     setError('');
     try {
       const { user } = await api<{ user: User }>('/login', 'POST', { email: e, password: p });
+      await showSuccess(`Welcome back, ${user.full_name}.`);
       router.replace(HOME[user.role]);
       router.refresh();
     } catch (err) {
