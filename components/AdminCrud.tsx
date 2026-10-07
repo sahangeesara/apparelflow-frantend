@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import type { AdminColumn, AdminTable, Recipe } from '@/lib/types';
+import type { AdminColumn, AdminTable, Order, Recipe } from '@/lib/types';
+import StatusChip from './StatusChip';
 
 type TableData = { name: string; columns: AdminColumn[]; rows: Record<string, unknown>[] };
 
@@ -13,6 +15,7 @@ const isDateColumn = (column: AdminColumn) => normalizedType(column) === 'date';
 const isTimestampColumn = (column: AdminColumn) => normalizedType(column).includes('timestamp') || normalizedType(column) === 'timestamptz';
 const isUserReference = (column: AdminColumn) => /(^|_)(created_by|updated_by|sewing_started_by|verifier_id|user_id)$/.test(column.name);
 const isGeneratedColumn = (column: AdminColumn) => isUserReference(column) || ['order_no', 'created_at', 'updated_at'].includes(column.name);
+const isImageColumn = (column: AdminColumn) => column.name === 'image_url';
 const inputType = (column: AdminColumn) => isDateColumn(column) ? 'date' : isTimestampColumn(column) ? 'datetime-local' : 'text';
 
 function pickerValue(column: AdminColumn, value: unknown) {
@@ -38,6 +41,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
   const [selected, setSelected] = useState(initialTables.find(table => table.available)?.name ?? '');
   const [data, setData] = useState<TableData | null>(null);
   const [orderRecipes, setOrderRecipes] = useState<Recipe[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [orderDraft, setOrderDraft] = useState({ recipeId: '', qty: '', roll: '', yds: '' });
   const [userLabels, setUserLabels] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -58,6 +62,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
         const recipes = await api<{ recipes: Recipe[] }>('/recipes');
         setOrderRecipes(recipes.recipes);
         setOrderDraft({ recipeId: String(recipes.recipes[0]?.id ?? ''), qty: '', roll: '', yds: '' });
+        setOrders((await api<{ orders: Order[] }>('/orders')).orders);
       }
       if (table !== 'profiles' && initialTables.some(item => item.name === 'profiles' && item.available)) {
         const profiles = await api<TableData>('/admin/profiles');
@@ -95,6 +100,34 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
     value: string,
     onChange: (value: string) => void,
   ) {
+    if (isImageColumn(column)) {
+      return (
+        <div className="mt-1 space-y-2">
+          <input
+            type="file"
+            accept="image/*"
+            className="field"
+            onChange={event => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              if (!file.type.startsWith('image/')) {
+                setError('Please select an image file.');
+                return;
+              }
+              if (file.size > 2 * 1024 * 1024) {
+                setError('Image must be 2 MB or smaller.');
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = () => onChange(String(reader.result));
+              reader.onerror = () => setError('Could not read the selected image.');
+              reader.readAsDataURL(file);
+            }}
+          />
+          {value && <Image src={value} alt="Component preview" width={80} height={80} unoptimized className="h-20 w-20 rounded border border-slate-300 object-cover" />}
+        </div>
+      );
+    }
     return (
       <input
         type={inputType(column)}
@@ -118,6 +151,13 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
     }
     if (isDateColumn(column) || isTimestampColumn(column)) return pickerValue(column, value).replace('T', ' ');
     return String(value);
+  }
+
+  function renderCell(column: AdminColumn, row: Record<string, unknown>) {
+    if (isImageColumn(column) && typeof row[column.name] === 'string' && row[column.name]) {
+      return <Image src={String(row[column.name])} alt="Component image" width={48} height={48} unoptimized className="h-12 w-12 rounded border border-slate-300 object-cover" />;
+    }
+    return displayValue(column, row);
   }
 
   async function create() {
@@ -267,6 +307,43 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
             <button type="button" className="btn mt-4" onClick={() => void create()}>Add {title(data.name).replace(/s$/, '')}</button>
           </div>}
 
+          {data.name === 'cutting_orders' && (
+            <div className="card overflow-x-auto rounded-lg border border-blue-200 bg-blue-50 p-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Cutting Orders</h3>
+                  <p className="text-sm text-slate-600">Operational order view with recipe, owner, status and verification details.</p>
+                </div>
+                <button type="button" className="btn btn-ghost" onClick={() => void load(data.name)}>Refresh</button>
+              </div>
+              {orders.length ? (
+                <table className="w-full min-w-[900px] text-left text-sm">
+                  <thead><tr>{['Order', 'Recipe', 'Qty', 'Fabric roll', 'Fabric used', 'Created by', 'Status', 'Verification'].map(header => <th className="th" key={header}>{header}</th>)}</tr></thead>
+                  <tbody>
+                    {orders.map(order => (
+                      <tr key={order.id}>
+                        <td className="td font-semibold">{order.order_no}</td>
+                        <td className="td">{order.recipe_code} – {order.recipe_name}</td>
+                        <td className="td">{order.target_qty}</td>
+                        <td className="td">{order.fabric_roll_id}</td>
+                        <td className="td">{order.actual_fabric_yds} yds</td>
+                        <td className="td">{order.created_by_name || '—'}</td>
+                        <td className="td"><StatusChip status={order.status} /></td>
+                        <td className="td">
+                          {order.last_log
+                            ? `${order.last_log.decision} · ${order.last_log.verifier_name}`
+                            : order.components.some(component => component.actual_qty !== null)
+                              ? 'Counts submitted · awaiting decision'
+                              : 'Not submitted'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <p className="text-gray-700">No orders yet.</p>}
+            </div>
+          )}
+
           {editing && canEdit && (
             <div className="card rounded-lg border border-blue-200 bg-blue-50 p-5">
               <h3 className="mb-4 font-bold text-slate-900">Edit {title(data.name)} record</h3>
@@ -295,7 +372,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
               <tbody>
                 {data.rows.map((row, index) => (
                   <tr key={index}>
-                    {data.columns.map(column => <td className="td max-w-xs truncate" key={column.name} title={isUserReference(column) ? String(row[column.name] ?? '') : undefined}>{displayValue(column, row)}</td>)}
+                    {data.columns.map(column => <td className="td max-w-xs truncate" key={column.name} title={isUserReference(column) ? String(row[column.name] ?? '') : undefined}>{renderCell(column, row)}</td>)}
                     <td className="td"><div className="flex gap-2">
                       {canEdit && <button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => setEditing({ ...row })}>Edit</button>}
                       {canDelete && <button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => void remove(row)}>Delete</button>}
