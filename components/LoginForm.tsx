@@ -37,12 +37,12 @@ export default function LoginForm({ onSignup }: { onSignup: () => void }) {
       <button type="button" className="auth-switch" onClick={onSignup}>
         Sign up
       </button>
-      <div className="auth-demo">
+      {/* <div className="auth-demo">
         <h2 className="mb-1 text-lg font-bold">Try a demo role</h2>
       <p className="mb-2 text-gray-700">Click a role to sign in instantly.</p>
       <div className="flex flex-wrap gap-2">{DEMO.map(([l, e, p]) => <button key={e} className="btn btn-ghost" onClick={() => signIn(e, p)}>{l}</button>)}</div>
       <table className="mt-3 w-full text-sm"><tbody>{DEMO.map(([l, e, p]) => <tr key={e}><td className="td">{l}</td><td className="td">{e}</td><td className="td">{p}</td></tr>)}</tbody></table>
-      </div>
+      </div> */}
     </div>
   );
 }
