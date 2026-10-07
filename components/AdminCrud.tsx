@@ -73,6 +73,9 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
   }
 
   const primary = data?.columns.filter(column => column.pk > 0) ?? [];
+  const canCreate = data?.name !== 'verification_items' && data?.name !== 'verification_logs';
+  const canEdit = data?.name !== 'verification_logs';
+  const canDelete = data?.name !== 'verification_logs';
   const editable = data?.columns.filter(column => !column.pk && !column.dflt_value && !isGeneratedColumn(column)) ?? [];
   const createFields = data?.columns.filter(column => !column.dflt_value && !isGeneratedColumn(column)) ?? [];
   const keyFor = (row: Record<string, unknown>) => encodeURIComponent(
@@ -216,7 +219,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
 
       {data && (
         <>
-          <div className="card rounded-lg border border-slate-200 bg-white p-5">
+          {canCreate && <div className="card rounded-lg border border-slate-200 bg-white p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">{title(data.name)}</h3>
@@ -262,9 +265,9 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
             </div>
             )}
             <button type="button" className="btn mt-4" onClick={() => void create()}>Add {title(data.name).replace(/s$/, '')}</button>
-          </div>
+          </div>}
 
-          {editing && (
+          {editing && canEdit && (
             <div className="card rounded-lg border border-blue-200 bg-blue-50 p-5">
               <h3 className="mb-4 font-bold text-slate-900">Edit {title(data.name)} record</h3>
               <div className="grid gap-3 md:grid-cols-3">
@@ -293,7 +296,11 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
                 {data.rows.map((row, index) => (
                   <tr key={index}>
                     {data.columns.map(column => <td className="td max-w-xs truncate" key={column.name} title={isUserReference(column) ? String(row[column.name] ?? '') : undefined}>{displayValue(column, row)}</td>)}
-                    <td className="td"><div className="flex gap-2"><button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => setEditing({ ...row })}>Edit</button><button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => void remove(row)}>Delete</button></div></td>
+                    <td className="td"><div className="flex gap-2">
+                      {canEdit && <button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => setEditing({ ...row })}>Edit</button>}
+                      {canDelete && <button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => void remove(row)}>Delete</button>}
+                      {!canEdit && !canDelete && <span className="text-slate-500">View only</span>}
+                    </div></td>
                   </tr>
                 ))}
               </tbody>
