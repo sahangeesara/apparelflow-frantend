@@ -16,6 +16,20 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Backend configuration
+
+The frontend uses the deployed Render API by default:
+
+`https://apparelflow-bacend.onrender.com`
+
+To use a local or different backend, set `BACKEND_URL` before starting or building
+the app:
+
+```powershell
+$env:BACKEND_URL = "http://localhost:4000"
+npm run dev
+```
+
 ## Demo Login Credentials
 
 | Role | Email | Password |

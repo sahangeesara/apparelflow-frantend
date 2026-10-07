@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { HOME, type Role, type User } from './types';
 
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:4000';
+const BACKEND = process.env.BACKEND_URL || 'https://apparelflow-bacend.onrender.com';
 
 /** Server-side fetch to the Express API, forwarding the browser's session cookie. */
 export async function sfetch<T>(path: string): Promise<T | null> {

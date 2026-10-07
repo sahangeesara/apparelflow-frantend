@@ -1,6 +1,6 @@
 import type { NextConfig } from 'next';
 
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:4000';
+const BACKEND = process.env.BACKEND_URL || 'https://apparelflow-bacend.onrender.com';
 /** Browser calls /api/* on the Next origin; Next proxies to Express, so the session cookie stays same-origin. */
 const nextConfig: NextConfig = {
   async rewrites() {
