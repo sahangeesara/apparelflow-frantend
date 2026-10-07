@@ -13,6 +13,7 @@ const title = (name: string) => name.split('_').map(word => word[0].toUpperCase(
 const normalizedType = (column: AdminColumn) => column.type.trim().toLowerCase();
 const isDateColumn = (column: AdminColumn) => normalizedType(column) === 'date';
 const isTimestampColumn = (column: AdminColumn) => normalizedType(column).includes('timestamp') || normalizedType(column) === 'timestamptz';
+const isJsonColumn = (column: AdminColumn) => normalizedType(column).includes('json');
 const isUserReference = (column: AdminColumn) => /(^|_)(created_by|updated_by|sewing_started_by|verifier_id|user_id)$/.test(column.name);
 const isGeneratedColumn = (column: AdminColumn) => isUserReference(column) || ['order_no', 'created_at', 'updated_at'].includes(column.name);
 const isImageColumn = (column: AdminColumn) => column.name === 'image_url';
@@ -20,7 +21,9 @@ const inputType = (column: AdminColumn) => isDateColumn(column) ? 'date' : isTim
 
 function pickerValue(column: AdminColumn, value: unknown) {
   if (value === null || value === undefined || value === '') return '';
-  const text = String(value);
+  const text = isJsonColumn(column) && typeof value === 'object'
+    ? JSON.stringify(value, null, 2)
+    : String(value);
   if (isDateColumn(column)) return text.slice(0, 10);
   if (isTimestampColumn(column)) return text.replace(' ', 'T').slice(0, 16);
   return text;
@@ -28,6 +31,13 @@ function pickerValue(column: AdminColumn, value: unknown) {
 
 function databaseValue(column: AdminColumn, value: string) {
   if (!value) return value;
+  if (isJsonColumn(column)) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      throw new Error(`${column.name} must contain valid JSON.`);
+    }
+  }
   if (isDateColumn(column)) return value;
   if (isTimestampColumn(column)) {
     const type = normalizedType(column);
@@ -35,6 +45,13 @@ function databaseValue(column: AdminColumn, value: string) {
     return value.length === 16 ? `${value}:00` : value;
   }
   return value;
+}
+
+function displayDatabaseValue(value: unknown) {
+  if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }
 
 export default function AdminCrud({ initialTables }: { initialTables: AdminTable[] }) {
@@ -100,6 +117,16 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
     value: string,
     onChange: (value: string) => void,
   ) {
+    if (isJsonColumn(column)) {
+      return (
+        <textarea
+          className="field mt-1 min-h-32 font-mono text-xs"
+          placeholder={`{"${column.name}": "value"}`}
+          value={value}
+          onChange={event => onChange(event.target.value)}
+        />
+      );
+    }
     if (isImageColumn(column)) {
       return (
         <div className="mt-1 space-y-2">
@@ -150,14 +177,15 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
       return `User ${id.length > 12 ? `${id.slice(0, 8)}…` : id}`;
     }
     if (isDateColumn(column) || isTimestampColumn(column)) return pickerValue(column, value).replace('T', ' ');
-    return String(value);
+    return displayDatabaseValue(value);
   }
 
   function renderCell(column: AdminColumn, row: Record<string, unknown>) {
     if (isImageColumn(column) && typeof row[column.name] === 'string' && row[column.name]) {
       return <Image src={String(row[column.name])} alt="Component image" width={48} height={48} unoptimized className="h-12 w-12 rounded border border-slate-300 object-cover" />;
     }
-    return displayValue(column, row);
+    const value = displayValue(column, row);
+    return value;
   }
 
   async function create() {
@@ -372,7 +400,13 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
               <tbody>
                 {data.rows.map((row, index) => (
                   <tr key={index}>
-                    {data.columns.map(column => <td className="td max-w-xs truncate" key={column.name} title={isUserReference(column) ? String(row[column.name] ?? '') : undefined}>{renderCell(column, row)}</td>)}
+                    {data.columns.map(column => {
+                      const rawValue = row[column.name];
+                      const titleValue = rawValue && typeof rawValue === 'object'
+                        ? JSON.stringify(rawValue, null, 2)
+                        : isUserReference(column) ? String(rawValue ?? '') : undefined;
+                      return <td className="td max-w-xs truncate" key={column.name} title={titleValue}>{renderCell(column, row)}</td>;
+                    })}
                     <td className="td"><div className="flex gap-2">
                       {canEdit && <button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => setEditing({ ...row })}>Edit</button>}
                       {canDelete && <button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => void remove(row)}>Delete</button>}
