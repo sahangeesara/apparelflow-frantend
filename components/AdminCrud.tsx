@@ -287,7 +287,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
             className={`rounded-lg border p-4 text-left transition ${selected === table.name ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300'} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             <span className="block font-semibold text-slate-900">{title(table.name)}</span>
-            <span className="mt-1 block text-xs text-slate-500">{table.available ? 'Open CRUD view' : 'Not available in local database'}</span>
+            {/* <span className="mt-1 block text-xs text-slate-500">{table.available ? 'Open view' : 'Not available in local database'}</span> */}
           </button>
         ))}
       </div>
