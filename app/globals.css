@@ -1,132 +1,314 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #172033;
+@layer base {
+  :root {
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+  }
+
+  body {
+    min-height: 100vh;
+    background-color: var(--background);
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.05) 0px, transparent 50%);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Custom Scrollbar Styles for horizontal & vertical scrolling */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
 }
 
-body {
-  min-height: 100vh;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
 }
 
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Table Container & Base Table Classes */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.th {
+  padding: 0.875rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.td {
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+tr:last-child .td {
+  border-bottom: none;
+}
+
+tr.table-row-hover:hover {
+  background-color: #f8fafc;
+}
+
+/* Base Card Styling */
+.card {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background-color: #ffffff;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.03);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+/* Glassmorphism Card Alternative */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03);
+}
+
+/* Field Inputs */
+.field {
+  width: 100%;
+  border-radius: 0.6rem;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+}
+
+.field:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.field:disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.field-bad {
+  border-color: #f43f5e !important;
+  background-color: #fff1f2 !important;
+}
+
+.field-bad:focus {
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15) !important;
+}
+
+/* Button Variants */
+.btn {
+  display: inline-flex;
+  items-center: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.6rem;
+  background-color: #2563eb;
+  padding: 0.625rem 1.125rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-ghost {
+  background-color: #f1f5f9;
+  color: #334155;
+  box-shadow: none;
+}
+
+.btn-ghost:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+  box-shadow: none;
+}
+
+.btn-ok, .btn-success {
+  background-color: #059669;
+  color: #ffffff;
+}
+
+.btn-ok:hover, .btn-success:hover {
+  background-color: #047857;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.btn-danger {
+  background-color: #e11d48;
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background-color: #be123c;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25);
+}
+
+/* Auth Page specific styling */
 .auth-page {
   min-height: 100vh;
-  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0f172a 100%);
   padding: 2rem 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-page::before {
+  content: "";
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .auth-card {
+  position: relative;
+  z-index: 10;
   width: 100%;
   max-width: 28rem;
-  margin: 0 auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: #ffffff;
-  padding: 2rem;
-  box-shadow: 0 12px 35px rgb(15 23 42 / 8%);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  padding: 2.25rem 2rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .auth-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   margin-bottom: 0.5rem;
-  color: #2563eb;
+  color: #3b82f6;
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 800;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
 .auth-subtitle {
   margin-bottom: 1.5rem;
   color: #64748b;
-  font-size: 0.95rem;
+  font-size: 0.925rem;
+  line-height: 1.5;
 }
 
 .auth-submit {
   width: 100%;
-  margin-top: 0.5rem;
-  border-radius: 0.6rem;
-  background: #2563eb;
+  margin-top: 1.25rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   padding: 0.75rem 1rem;
   color: #ffffff;
+  font-size: 0.925rem;
   font-weight: 700;
-  transition: background 150ms ease;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .auth-submit:hover {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+  transform: translateY(-1px);
 }
 
 .auth-submit:disabled {
-  cursor: not-allowed;
   opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .auth-switch {
   width: 100%;
-  margin-top: 0.75rem;
-  border: 1px solid #bfdbfe;
-  border-radius: 0.6rem;
+  margin-top: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  background-color: #f8fafc;
   padding: 0.65rem 1rem;
-  color: #1d4ed8;
-  font-weight: 700;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  cursor: pointer;
 }
 
 .auth-switch:hover {
-  background: #eff6ff;
-}
-
-.auth-demo {
-  margin-top: 1.75rem;
-  border-top: 1px solid #e2e8f0;
-  padding-top: 1.25rem;
-}
-
-.field {
-  width: 100%;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.55rem;
-  background: #ffffff;
-  padding: 0.7rem 0.8rem;
-  color: #172033;
-  outline: none;
-}
-
-.field:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgb(37 99 235 / 15%);
-}
-
-.card {
-  padding: 0;
-}
-
-.btn {
-  border-radius: 0.55rem;
-  background: #2563eb;
-  padding: 0.65rem 1rem;
-  color: #ffffff;
-  font-weight: 700;
-}
-
-.btn:hover {
-  background: #1d4ed8;
-}
-
-.btn-ghost {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.btn-ghost:hover {
-  background: #dbeafe;
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
 }
