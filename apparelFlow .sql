@@ -15,7 +15,7 @@ alter table profiles enable row level security;   -- policies nehe: client walat
 
 create table if not exists sessions (
   token      text primary key,
-  user_id    bigint not null references users(id) on delete cascade,
+  user_id    uuid not null references profiles(id) on delete cascade,
   expires_at bigint not null            -- epoch milliseconds (same as the current backend code)
 );
 
@@ -45,9 +45,9 @@ create table if not exists cutting_orders (
   actual_fabric_yds  numeric(10,2) not null check (actual_fabric_yds > 0),
   status             text not null default 'PENDING_VERIFICATION'
                      check (status in ('CUTTING_IN_PROGRESS','PENDING_VERIFICATION','REJECTED','VERIFIED')),
-  created_by         bigint not null references users(id),
+  created_by         uuid not null references profiles(id),
   sewing_started_at  timestamptz,
-  sewing_started_by  bigint references users(id),
+  sewing_started_by  uuid references profiles(id),
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
@@ -65,7 +65,7 @@ create table if not exists verification_items (
 create table if not exists verification_logs (
   id             bigint generated always as identity primary key,
   order_id       bigint not null references cutting_orders(id),
-  verifier_id    bigint not null references users(id),
+  verifier_id    uuid not null references profiles(id),
   decision       text not null check (decision in ('APPROVED','REJECTED')),
   rejection_note text,
   wastage_pct    numeric(7,2),
@@ -116,7 +116,7 @@ create trigger orders_verified_gate before update on cutting_orders for each row
 -- Supabase exposes public tables through its REST API. Enabling RLS with NO policies
 -- blocks the anon/authenticated keys completely; only your backend (service_role key
 -- or the direct Postgres connection string) can read/write.
-alter table users              enable row level security;
+alter table profiles           enable row level security;
 alter table sessions           enable row level security;
 alter table recipes            enable row level security;
 alter table recipe_components  enable row level security;

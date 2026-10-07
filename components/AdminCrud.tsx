@@ -8,10 +8,35 @@ import type { AdminColumn, AdminTable } from '@/lib/types';
 type TableData = { name: string; columns: AdminColumn[]; rows: Record<string, unknown>[] };
 
 const title = (name: string) => name.split('_').map(word => word[0].toUpperCase() + word.slice(1)).join(' ');
+const normalizedType = (column: AdminColumn) => column.type.trim().toLowerCase();
+const isDateColumn = (column: AdminColumn) => normalizedType(column) === 'date';
+const isTimestampColumn = (column: AdminColumn) => normalizedType(column).includes('timestamp') || normalizedType(column) === 'timestamptz';
+const isUserReference = (column: AdminColumn) => /(^|_)(created_by|updated_by|sewing_started_by|verifier_id|user_id)$/.test(column.name);
+const inputType = (column: AdminColumn) => isDateColumn(column) ? 'date' : isTimestampColumn(column) ? 'datetime-local' : 'text';
+
+function pickerValue(column: AdminColumn, value: unknown) {
+  if (value === null || value === undefined || value === '') return '';
+  const text = String(value);
+  if (isDateColumn(column)) return text.slice(0, 10);
+  if (isTimestampColumn(column)) return text.replace(' ', 'T').slice(0, 16);
+  return text;
+}
+
+function databaseValue(column: AdminColumn, value: string) {
+  if (!value) return value;
+  if (isDateColumn(column)) return value;
+  if (isTimestampColumn(column)) {
+    const type = normalizedType(column);
+    if (type.includes('with time zone') || type === 'timestamptz') return new Date(value).toISOString();
+    return value.length === 16 ? `${value}:00` : value;
+  }
+  return value;
+}
 
 export default function AdminCrud({ initialTables }: { initialTables: AdminTable[] }) {
   const [selected, setSelected] = useState(initialTables.find(table => table.available)?.name ?? '');
   const [data, setData] = useState<TableData | null>(null);
+  const [userLabels, setUserLabels] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState('');
@@ -26,26 +51,73 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
       setEditing(null);
       setDraft({});
       setData(await api<TableData>(`/admin/${table}`));
+      if (table !== 'profiles' && initialTables.some(item => item.name === 'profiles' && item.available)) {
+        const profiles = await api<TableData>('/admin/profiles');
+        setUserLabels(Object.fromEntries(
+          profiles.rows
+            .filter(row => typeof row.id === 'string' && typeof row.full_name === 'string')
+            .map(row => [row.id as string, row.full_name as string]),
+        ));
+      }
     } catch (err) {
       setError((err as Error).message);
     }
   }
 
   const primary = data?.columns.filter(column => column.pk > 0) ?? [];
-  const editable = data?.columns.filter(column => !column.pk && !column.dflt_value) ?? [];
-  const createFields = data?.columns.filter(column => !column.dflt_value) ?? [];
+  const editable = data?.columns.filter(column => !column.pk && !column.dflt_value && !isUserReference(column)) ?? [];
+  const createFields = data?.columns.filter(column => !column.dflt_value && !isUserReference(column)) ?? [];
   const keyFor = (row: Record<string, unknown>) => encodeURIComponent(
     JSON.stringify(Object.fromEntries(primary.map(column => [column.name, row[column.name]]))),
   );
 
   function fieldValue(column: AdminColumn, value: unknown) {
-    return value === null || value === undefined ? '' : String(value);
+    return pickerValue(column, value);
+  }
+
+  function createValue(column: AdminColumn, value: string) {
+    return databaseValue(column, value);
+  }
+
+  function renderInput(
+    column: AdminColumn,
+    value: string,
+    onChange: (value: string) => void,
+  ) {
+    return (
+      <input
+        type={inputType(column)}
+        className="field mt-1"
+        placeholder={inputType(column) === 'text' ? column.name : undefined}
+        step={inputType(column) === 'datetime-local' ? 60 : undefined}
+        value={value}
+        onChange={event => onChange(event.target.value)}
+      />
+    );
+  }
+
+  function displayValue(column: AdminColumn, row: Record<string, unknown>) {
+    const value = row[column.name];
+    if (value === null || value === undefined || value === '') return '—';
+    if (isUserReference(column)) {
+      const id = String(value);
+      const name = userLabels[id] ?? row[`${column.name}_name`] ?? row[`${column.name.replace(/_id$|_by$/, '')}_name`];
+      if (typeof name === 'string' && name.trim()) return name;
+      return `User ${id.length > 12 ? `${id.slice(0, 8)}…` : id}`;
+    }
+    if (isDateColumn(column) || isTimestampColumn(column)) return pickerValue(column, value).replace('T', ' ');
+    return String(value);
   }
 
   async function create() {
     if (!data) return;
     try {
-      await api(`/admin/${data.name}`, 'POST', draft);
+      const payload = Object.fromEntries(
+        data.columns
+          .filter(column => Object.hasOwn(draft, column.name))
+          .map(column => [column.name, createValue(column, draft[column.name])]),
+      );
+      await api(`/admin/${data.name}`, 'POST', payload);
       setDraft({});
       await load(data.name);
       setNotice(`${title(data.name)} record created.`);
@@ -68,7 +140,12 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
   async function update() {
     if (!data || !editing || !primary.length) return;
     try {
-      await api(`/admin/${data.name}/${keyFor(editing)}`, 'PATCH', editing);
+      const payload = Object.fromEntries(
+        data.columns
+          .filter(column => Object.hasOwn(editing, column.name))
+          .map(column => [column.name, createValue(column, fieldValue(column, editing[column.name]))]),
+      );
+      await api(`/admin/${data.name}/${keyFor(editing)}`, 'PATCH', payload);
       setEditing(null);
       await load(data.name);
       setNotice('Record updated.');
@@ -122,7 +199,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
               {createFields.map(column => (
                 <label className="text-sm font-semibold text-slate-700" key={column.name}>
                   {title(column.name)}
-                  <input className="field mt-1" placeholder={column.name} value={draft[column.name] ?? ''} onChange={event => setDraft({ ...draft, [column.name]: event.target.value })} />
+                  {renderInput(column, draft[column.name] ?? '', value => setDraft({ ...draft, [column.name]: value }))}
                 </label>
               ))}
             </div>
@@ -136,7 +213,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
                 {editable.map(column => (
                   <label className="text-sm font-semibold text-slate-700" key={column.name}>
                     {title(column.name)}
-                    <input className="field mt-1" value={fieldValue(column, editing[column.name])} onChange={event => setEditing({ ...editing, [column.name]: event.target.value })} />
+                    {renderInput(column, fieldValue(column, editing[column.name]), value => setEditing({ ...editing, [column.name]: value }))}
                   </label>
                 ))}
               </div>
@@ -157,7 +234,7 @@ export default function AdminCrud({ initialTables }: { initialTables: AdminTable
               <tbody>
                 {data.rows.map((row, index) => (
                   <tr key={index}>
-                    {data.columns.map(column => <td className="td max-w-xs truncate" key={column.name}>{String(row[column.name] ?? '—')}</td>)}
+                    {data.columns.map(column => <td className="td max-w-xs truncate" key={column.name} title={isUserReference(column) ? String(row[column.name] ?? '') : undefined}>{displayValue(column, row)}</td>)}
                     <td className="td"><div className="flex gap-2"><button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => setEditing({ ...row })}>Edit</button><button type="button" className="btn btn-ghost" disabled={!primary.length} onClick={() => void remove(row)}>Delete</button></div></td>
                   </tr>
                 ))}
