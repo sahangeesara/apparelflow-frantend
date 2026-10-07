@@ -1,5 +1,5 @@
 const COLORS: Record<string, string> = {
-  GREEN: 'bg-emerald-700', VERIFIED: 'bg-emerald-700', YELLOW: 'bg-amber-800', RED: 'bg-red-700', REJECTED: 'bg-red-700',
+  GREEN: 'bg-emerald-700', VERIFIED: 'bg-emerald-700', YELLOW: 'bg-yellow-800', RED: 'bg-red-700', REJECTED: 'bg-red-700',
   PENDING_VERIFICATION: 'bg-blue-700',
 };
 export default function StatusChip({ status }: { status: string | null }) {
